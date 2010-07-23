@@ -34,6 +34,9 @@ require DA_ROOT + File.join(%w{lib declarative_authorization authorization})
 require DA_ROOT + File.join(%w{lib declarative_authorization in_controller})
 require DA_ROOT + File.join(%w{lib declarative_authorization maintenance})
 
+class ApplicationController < ActionController::Base 
+end
+
 begin
   require 'ruby-debug'
 rescue MissingSourceFile; end
