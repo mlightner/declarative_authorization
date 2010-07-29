@@ -94,7 +94,7 @@ module AuthorizationRulesHelper
 
   def human_context (context)
     begin
-      context.to_s.classify.constantize.human_name
+      context.to_s.classify.constantize.human
     rescue
       context.to_s
     end
