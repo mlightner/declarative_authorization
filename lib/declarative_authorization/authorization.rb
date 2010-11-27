@@ -20,7 +20,7 @@ module Authorization
   # The exception is raised to ensure that the entire rule is invalidated.
   class NilAttributeValueError < AuthorizationError; end
   
-  AUTH_DSL_FILES = [(Rails.root || Pathname.new('')).join("config", "authorization_rules.rb").to_s] unless defined? AUTH_DSL_FILES
+  AUTH_DSL_FILES = [Pathname.new(Rails.root || '').join("config", "authorization_rules.rb").to_s] unless defined? AUTH_DSL_FILES
   
   # Controller-independent method for retrieving the current user.
   # Needed for model security where the current controller is not available.
@@ -296,7 +296,7 @@ module Authorization
     
     def flatten_roles (roles)
       # TODO caching?
-      flattened_roles = roles.clone.to_a
+      flattened_roles = roles.dup.to_a
       flattened_roles.each do |role|
         flattened_roles.concat(@role_hierarchy[role]).uniq! if @role_hierarchy[role]
       end
@@ -373,18 +373,27 @@ module Authorization
           exceptions << e
           nil
         end
-      end.flatten.compact
+      end
 
       if exceptions.length > 0 and (@join_operator == :and or exceptions.length == @attributes.length)
         raise NotAuthorized, "Missing authorization in collecting obligations: #{exceptions.map(&:to_s) * ", "}"
       end
 
       if @join_operator == :and and !obligations.empty?
-        merged_obligation = obligations.first
-        obligations[1..-1].each do |obligation|
-          merged_obligation = merged_obligation.deep_merge(obligation)
+        # cross product of OR'ed obligations in arrays
+        arrayed_obligations = obligations.map {|obligation| obligation.is_a?(Hash) ? [obligation] : obligation}
+        merged_obligations = arrayed_obligations.first
+        arrayed_obligations[1..-1].each do |inner_obligations|
+          previous_merged_obligations = merged_obligations
+          merged_obligations = inner_obligations.collect do |inner_obligation|
+            previous_merged_obligations.collect do |merged_obligation|
+              merged_obligation.deep_merge(inner_obligation)
+            end
+          end.flatten
         end
-        obligations = [merged_obligation]
+        obligations = merged_obligations
+      else
+        obligations = obligations.flatten.compact
       end
       obligations.empty? ? [{}] : obligations
     end
